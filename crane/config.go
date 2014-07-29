@@ -110,7 +110,7 @@ func NewConfig(options Options, reversed bool) *Config {
 		panic(StatusError{fmt.Errorf("No configuration found %v", configFiles(options)), 78})
 	}
 	config.process()
-	config.truncate(options.target, false, false)
+	config.truncate(options.target, options.descendants, options.ancestors)
 	err := config.determineOrder(reversed)
 	if err != nil {
 		panic(StatusError{err, 78})

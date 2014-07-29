@@ -6,23 +6,27 @@ import (
 )
 
 type Options struct {
-	verbose  bool
-	recreate bool
-	nocache  bool
-	notrunc  bool
-	kill     bool
-	config   string
-	target   string
+	verbose     bool
+	recreate    bool
+	nocache     bool
+	notrunc     bool
+	kill        bool
+	descendants bool
+	ancestors   bool
+	config      string
+	target      string
 }
 
 var options = Options{
-	verbose:  false,
-	recreate: false,
-	nocache:  false,
-	notrunc:  false,
-	kill:     false,
-	config:   "",
-	target:   "",
+	verbose:     false,
+	recreate:    false,
+	nocache:     false,
+	notrunc:     false,
+	kill:        false,
+	descendants: false,
+	ancestors:   false,
+	config:      "",
+	target:      "",
 }
 
 func isVerbose() bool {
@@ -166,6 +170,8 @@ See the corresponding docker commands for more information.`,
 	craneCmd.PersistentFlags().BoolVarP(&options.verbose, "verbose", "v", false, "Verbose output")
 	craneCmd.PersistentFlags().StringVarP(&options.config, "config", "c", "", "Config file to read from")
 	craneCmd.PersistentFlags().StringVarP(&options.target, "target", "t", "", "Group or container to execute the command for")
+	craneCmd.PersistentFlags().BoolVarP(&options.descendants, "descendants", "d", false, "Also apply the command for the containers dependent on any of the targeted ones")
+	craneCmd.PersistentFlags().BoolVarP(&options.ancestors, "ancestors", "a", false, "Also apply the command for the containers that any of the targeted ones depend on")
 
 	cmdLift.Flags().BoolVarP(&options.recreate, "recreate", "r", false, "Recreate containers (kill and remove containers, provision images, run containers)")
 	cmdLift.Flags().BoolVarP(&options.nocache, "no-cache", "n", false, "Build the image without any cache")
