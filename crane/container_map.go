@@ -64,10 +64,55 @@ func (d *Dependencies) remove(resolved string) {
 	}
 }
 
-// returns a copy of the map where all containers are within the given list
-func (m ContainerMap) subset(included []string) ContainerMap {
-	newMap := make(ContainerMap)
+// returns a copy of the map where all containers are within the given list,
+// or depend direct or indirectly on one of them (if the dependendants flag
+// is set), or are their direct/indirect dependencies (if the ancestors flag
+// is set.
+func (m ContainerMap) subset(included []string, descendants bool, ancestors bool) ContainerMap {
+	includedSet := make(map[string]bool)
 	for _, name := range included {
+		includedSet[name] = true
+	}
+	reverseDependenciesMap := make(DependenciesMap)
+	if descendants {
+		reverseDependenciesMap = m.dependencies(true)
+	}
+	dependenciesMap := make(DependenciesMap)
+	if ancestors {
+		dependenciesMap = m.dependencies(false)
+	}
+	// add (recursively) related containers
+	newContainers := true
+	for newContainers {
+		newContainers = false
+		for name := range includedSet {
+			if descendants {
+				if reverseDependencies, notResolved := reverseDependenciesMap[name]; notResolved {
+					for _, name := range reverseDependencies.list {
+						if _, alreadyIncluded := includedSet[name]; !alreadyIncluded {
+							includedSet[name] = true
+							newContainers = true
+						}
+					}
+					reverseDependenciesMap.resolve(name)
+				}
+			}
+			if ancestors {
+				if dependencies, notResolved := dependenciesMap[name]; notResolved {
+					for _, name := range dependencies.list {
+						if _, alreadyIncluded := includedSet[name]; !alreadyIncluded {
+							includedSet[name] = true
+							newContainers = true
+						}
+					}
+					dependenciesMap.resolve(name)
+				}
+			}
+		}
+	}
+	// create new map containing only the computed set
+	newMap := make(ContainerMap)
+	for name := range includedSet {
 		if container, present := m[name]; present {
 			newMap[name] = container
 		}

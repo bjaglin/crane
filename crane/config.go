@@ -110,7 +110,7 @@ func NewConfig(options Options, reversed bool) *Config {
 		panic(StatusError{fmt.Errorf("No configuration found %v", configFiles(options)), 78})
 	}
 	config.process()
-	config.truncate(options.target)
+	config.truncate(options.target, false, false)
 	err := config.determineOrder(reversed)
 	if err != nil {
 		panic(StatusError{err, 78})
@@ -171,9 +171,9 @@ func (c *Config) determineOrder(reversed bool) error {
 
 // truncate receives a target and deletes all containers
 // from the map which are not targeted.
-func (c *Config) truncate(target string) {
+func (c *Config) truncate(target string, descendants bool, ancestors bool) {
 	included := c.targetedContainers(target)
-	c.containerMap = c.containerMap.subset(included)
+	c.containerMap = c.containerMap.subset(included, descendants, ancestors)
 }
 
 // targetedContainers receives a target and determines which

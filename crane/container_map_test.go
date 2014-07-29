@@ -9,7 +9,7 @@ func TestSubset(t *testing.T) {
 		"c": Container{},
 	}
 
-	subset := containerMap.subset([]string{"a", "c"})
+	subset := containerMap.subset([]string{"a", "c"}, false, false)
 	if _, present := subset["a"]; !present {
 		t.Errorf("a should have been kept")
 	}
@@ -20,7 +20,7 @@ func TestSubset(t *testing.T) {
 		t.Errorf("c should have been kept")
 	}
 
-	subset = containerMap.subset([]string{"a", "a"})
+	subset = containerMap.subset([]string{"a", "a"}, false, false)
 	if _, present := subset["a"]; !present {
 		t.Errorf("a should have been kept")
 	}
@@ -30,8 +30,119 @@ func TestSubset(t *testing.T) {
 	if _, present := subset["c"]; present {
 		t.Errorf("c should have been removed")
 	}
+}
 
-	subset = containerMap.subset([]string{"d"})
+func TestSubsetLinearDependencies(t *testing.T) {
+	containerMap := ContainerMap{
+		"a": Container{RawName: "a", Run: RunParameters{RawLink: []string{"b:b"}}},
+		"b": Container{RawName: "b", Run: RunParameters{RawLink: []string{"c:c"}}},
+		"c": Container{RawName: "c"},
+	}
+	// descendants
+	subset := containerMap.subset([]string{"c"}, true, false)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	subset = containerMap.subset([]string{"b"}, true, false)
+	if _, present := subset["c"]; present || len(subset) != 2 {
+		t.Errorf("c should have been left out but got %v", subset)
+	}
+	// ancestors
+	subset = containerMap.subset([]string{"a"}, false, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	subset = containerMap.subset([]string{"b"}, false, true)
+	if _, present := subset["a"]; present || len(subset) != 2 {
+		t.Errorf("a should have been left out but got %v", subset)
+	}
+	// descendants + ancestors
+	subset = containerMap.subset([]string{"b"}, true, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+}
+
+func TestSubsetGraphDependencies(t *testing.T) {
+	containerMap := ContainerMap{
+		"a": Container{RawName: "a", Run: RunParameters{RawLink: []string{"b:b", "c:c"}}},
+		"b": Container{RawName: "b"},
+		"c": Container{RawName: "c"},
+	}
+	// descendants
+	subset := containerMap.subset([]string{"b"}, true, false)
+	if _, present := subset["c"]; present || len(subset) != 2 {
+		t.Errorf("c should have been left out but got %v", subset)
+	}
+	subset = containerMap.subset([]string{"c"}, true, false)
+	if _, present := subset["b"]; present || len(subset) != 2 {
+		t.Errorf("b should have been left out but got %v", subset)
+	}
+	// ancestors
+	subset = containerMap.subset([]string{"a"}, false, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	// descendants + ancestors
+	subset = containerMap.subset([]string{"b"}, true, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	subset = containerMap.subset([]string{"c"}, true, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+}
+
+func TestSubsetMissingDependencies(t *testing.T) {
+	containerMap := ContainerMap{
+		"a": Container{RawName: "a", Run: RunParameters{RawLink: []string{"b:b", "d:d"}}},
+		"b": Container{RawName: "b", Run: RunParameters{RawLink: []string{"c:c"}}},
+		"c": Container{RawName: "c", Run: RunParameters{RawLink: []string{"d:d"}}},
+	}
+	// descendants
+	subset := containerMap.subset([]string{"c"}, true, false)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	subset = containerMap.subset([]string{"b"}, true, false)
+	if _, present := subset["c"]; present || len(subset) != 2 {
+		t.Errorf("c should have been left out but got %v", subset)
+	}
+	// ancestors
+	subset = containerMap.subset([]string{"a"}, false, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+	// descendants + ancestors
+	subset = containerMap.subset([]string{"b"}, true, true)
+	if len(subset) != 3 {
+		t.Errorf("all containers should have been kept but got %v", subset)
+	}
+}
+
+func TestSubsetInvalidTarget(t *testing.T) {
+	containerMap := ContainerMap{
+		"a": Container{RawName: "a", Run: RunParameters{RawLink: []string{"b:b"}}},
+		"b": Container{RawName: "b", Run: RunParameters{RawLink: []string{"c:c"}}},
+		"c": Container{RawName: "c"},
+	}
+	subset := containerMap.subset([]string{"d"}, false, false)
+	if len(subset) != 0 {
+		t.Errorf("everything should have been removed but got %v", subset)
+	}
+	// descendants
+	subset = containerMap.subset([]string{"d"}, true, false)
+	if len(subset) != 0 {
+		t.Errorf("everything should have been removed but got %v", subset)
+	}
+	// ancestors
+	subset = containerMap.subset([]string{"d"}, false, true)
+	if len(subset) != 0 {
+		t.Errorf("everything should have been removed but got %v", subset)
+	}
+	// descendants + ancestors
+	subset = containerMap.subset([]string{"d"}, true, true)
 	if len(subset) != 0 {
 		t.Errorf("everything should have been removed but got %v", subset)
 	}
