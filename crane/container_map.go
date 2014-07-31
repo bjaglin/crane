@@ -64,14 +64,59 @@ func (d *Dependencies) remove(resolved string) {
 	}
 }
 
-// returns a copy of the map where all containers are within the given list
-func (m ContainerMap) subset(included []string) ContainerMap {
-	newMap := make(ContainerMap)
+// returns a copy of the map where all containers are within the given list,
+// or depend direct or indirectly on one of them (if the dependendants flag
+// is set), or are their direct/indirect dependencies (if the ancestors flag
+// is set.
+func (m ContainerMap) subset(included []string, descendants bool, ancestors bool) ContainerMap {
+	reverseDependenciesMap := make(DependenciesMap)
+	if descendants {
+		reverseDependenciesMap = m.dependencies(true)
+	}
+	dependenciesMap := make(DependenciesMap)
+	if ancestors {
+		dependenciesMap = m.dependencies(false)
+	}
+
+	// set up the initial set
+	includedSet := make(map[string]bool)
 	for _, name := range included {
+		includedSet[name] = true
+	}
+
+	// add containers until cascading stops
+	cascadingSeeds := included
+	for len(cascadingSeeds) > 0 {
+		nextCascadingSeeds := []string{}
+		for _, name := range cascadingSeeds {
+			cascadeAgainst := func(cascadingMap DependenciesMap) {
+				if cascadingMap, ok := cascadingMap[name]; ok {
+					for _, name := range cascadingMap.list {
+						if _, alreadyIncluded := includedSet[name]; !alreadyIncluded {
+							includedSet[name] = true
+							nextCascadingSeeds = append(nextCascadingSeeds, name)
+						}
+					}
+				}
+			}
+			if descendants {
+				cascadeAgainst(reverseDependenciesMap)
+			}
+			if ancestors {
+				cascadeAgainst(dependenciesMap)
+			}
+		}
+		cascadingSeeds = nextCascadingSeeds
+	}
+
+	// create new map containing only the computed set
+	newMap := make(ContainerMap)
+	for name := range includedSet {
 		if container, present := m[name]; present {
 			newMap[name] = container
 		}
 	}
+
 	return newMap
 }
 
