@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 )
 
@@ -191,7 +192,7 @@ func (c *Config) determineOrder(force bool) error {
 // determineTarget receives the specified target
 // and determines which containers should be targeted.
 // Additionally, ot sorts these alphabetically.
-func (c *Config) determineTarget(target string, cascadeDependencies bool, cascadeAffected bool) {
+func (c *Config) determineTarget(target string, cascadeDependencies string, cascadeAffected string) {
 	// start from the explicitly targeted target
 	includedSet := make(map[string]bool)
 	cascadingSeeds := []string{}
@@ -204,10 +205,12 @@ func (c *Config) determineTarget(target string, cascadeDependencies bool, cascad
 	for len(cascadingSeeds) > 0 {
 		nextCascadingSeeds := []string{}
 		for _, seed := range cascadingSeeds {
-			if cascadeDependencies {
+			if cascadeDependencies != "none" {
 				if dependencies, ok := c.dependencyGraph[seed]; ok {
-					// queue all the direct dependencies if we haven't already considered them
-					for _, name := range dependencies.all {
+					// queue direct dependencies if we haven't already considered them
+					follow := reflect.ValueOf(*dependencies).FieldByName(cascadeDependencies)
+					for i := 0; i < follow.Len(); i++ {
+						name := follow.Index(i).String()
 						if _, alreadyIncluded := includedSet[name]; !alreadyIncluded {
 							includedSet[name] = true
 							nextCascadingSeeds = append(nextCascadingSeeds, name)
@@ -215,7 +218,7 @@ func (c *Config) determineTarget(target string, cascadeDependencies bool, cascad
 					}
 				}
 			}
-			if cascadeAffected {
+			if cascadeAffected != "none" {
 				// queue all containers we haven't considered yet which directly depend on the seed
 				for name, dependencies := range c.dependencyGraph {
 					if _, alreadyIncluded := includedSet[name]; !alreadyIncluded {
