@@ -88,6 +88,41 @@ func TestCmd(t *testing.T) {
 	}
 }
 
+func TestHookExecution(t *testing.T) {
+	defer func() {
+		commandOutput = func(name string, args []string) (string, error) {
+			return "", nil
+		}
+	}()
+	c := &container{
+		hooks: hooks{
+			RawPreStart:  "a-pre-start",
+			RawPostStart: "a-post-start",
+			RawPreStop:   "a-pre-stop",
+			RawPostStop:  "a-post-stop",
+		},
+	}
+
+	// Mock the function used to spawn processes to intercept the commands issued
+	var commandNames []string
+	executeCommand = func(name string, args []string) {
+		commandNames = append(commandNames, name)
+	}
+
+	// Check Run hooks
+	commandNames = []string{}
+	c.Run("")
+	assert.Equal(t, []string{"a-pre-start", "docker", "a-post-start"}, commandNames)
+
+	// Check Stop hooks
+	commandOutput =  func(name string, args []string) (string, error) {
+		return "true", nil // stub docker output so that container is running
+	}
+	commandNames = []string{}
+	c.Stop()
+	assert.Equal(t, []string{"a-pre-stop", "docker", "a-post-stop"}, commandNames)
+}
+
 type OptBoolWrapper struct {
 	OptBool OptBool `json:"OptBool" yaml:"OptBool"`
 }

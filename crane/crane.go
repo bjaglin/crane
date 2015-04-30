@@ -99,7 +99,7 @@ func executeHook(hook string) {
 	}
 }
 
-func executeCommand(name string, args []string) {
+var executeCommand = func(name string, args []string) {
 	if isVerbose() {
 		print.Infof("\n--> %s %s\n", name, strings.Join(args, " "))
 	}
@@ -125,7 +125,7 @@ func executeCommandBackground(name string, args []string) (stdout, stderr io.Rea
 	return stdout, stderr
 }
 
-func commandOutput(name string, args []string) (string, error) {
+var commandOutput = func(name string, args []string) (string, error) {
 	out, err := exec.Command(name, args...).CombinedOutput()
 	return strings.TrimSpace(string(out)), err
 }
