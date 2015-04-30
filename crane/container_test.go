@@ -94,13 +94,27 @@ func TestHookExecution(t *testing.T) {
 			return "", nil
 		}
 	}()
-	c := &container{
+	a := &container{
+		RunParams: RunParameters{
+			RawLink: []string{"b:b"},
+		},
 		hooks: hooks{
 			RawPreStart:  "a-pre-start",
 			RawPostStart: "a-post-start",
-			RawPreStop:   "a-pre-stop",
-			RawPostStop:  "a-post-stop",
 		},
+	}
+	b := &container{
+		id: "running",
+		hooks: hooks{
+			RawPreStop:  "b-pre-stop",
+			RawPostStop: "b-post-stop",
+			RawPreLink:  "b-pre-link",
+			RawPostLink: "b-post-link",
+		},
+	}
+	containerMap := map[string]Container{
+		"a": a,
+		"b": b,
 	}
 
 	// Mock the function used to spawn processes to intercept the commands issued
@@ -109,18 +123,23 @@ func TestHookExecution(t *testing.T) {
 		commandNames = append(commandNames, name)
 	}
 
+	// Stub docker output so that only containers with the id `running` are running
+	commandOutput = func(name string, args []string) (string, error) {
+		if len(args) == 3 && args[2] == "running" {
+			return "true", nil
+		}
+		return "", nil
+	}
+
 	// Check Run hooks
 	commandNames = []string{}
-	c.Run("")
-	assert.Equal(t, []string{"a-pre-start", "docker", "a-post-start"}, commandNames)
+	a.Run(containerMap, "")
+	assert.Equal(t, []string{"a-pre-start", "b-pre-link", "docker", "b-post-link", "a-post-start"}, commandNames)
 
 	// Check Stop hooks
-	commandOutput =  func(name string, args []string) (string, error) {
-		return "true", nil // stub docker output so that container is running
-	}
 	commandNames = []string{}
-	c.Stop()
-	assert.Equal(t, []string{"a-pre-stop", "docker", "a-post-stop"}, commandNames)
+	b.Stop()
+	assert.Equal(t, []string{"b-pre-stop", "docker", "b-post-stop"}, commandNames)
 }
 
 type OptBoolWrapper struct {

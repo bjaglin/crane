@@ -25,10 +25,10 @@ type Container interface {
 	Status() []string
 	Provision(nocache bool)
 	ProvisionOrSkip(update bool, nocache bool)
-	Create(ignoreMissing string)
-	Run(ignoreMissing string)
+	Create(containerMap ContainerMap, ignoreMissing string)
+	Run(containerMap ContainerMap, ignoreMissing string)
 	Start()
-	RunOrStart(ignoreMissing string)
+	RunOrStart(containerMap ContainerMap, ignoreMissing string)
 	Kill()
 	Stop()
 	Pause()
@@ -432,11 +432,11 @@ func (c *container) Provision(nocache bool) {
 }
 
 // Run or start container
-func (c *container) RunOrStart(ignoreMissing string) {
+func (c *container) RunOrStart(containerMap ContainerMap, ignoreMissing string) {
 	if c.Exists() {
 		c.Start()
 	} else {
-		c.Run(ignoreMissing)
+		c.Run(containerMap, ignoreMissing)
 	}
 }
 
@@ -448,7 +448,7 @@ func (c *container) ProvisionOrSkip(update bool, nocache bool) {
 }
 
 // Create container
-func (c *container) Create(ignoreMissing string) {
+func (c *container) Create(containerMap ContainerMap, ignoreMissing string) {
 	if c.Exists() {
 		print.Noticef("Container %s does already exist. Use --recreate to recreate.\n", c.Name())
 	} else {
@@ -459,7 +459,7 @@ func (c *container) Create(ignoreMissing string) {
 }
 
 // Run container, or start it if already existing
-func (c *container) Run(ignoreMissing string) {
+func (c *container) Run(containerMap ContainerMap, ignoreMissing string) {
 	if c.Exists() {
 		print.Noticef("Container %s does already exist. Use --recreate to recreate.\n", c.Name())
 		if !c.Running() {
@@ -467,6 +467,11 @@ func (c *container) Run(ignoreMissing string) {
 		}
 	} else {
 		executeHook(c.Hooks().PreStart())
+		c.Dependencies().forEachOfKind("link", func(name string) {
+			if dep, ok := containerMap[name]; ok {
+				executeHook(dep.Hooks().PreLink())
+			}
+		})
 		fmt.Printf("Running container %s ... ", c.Name())
 		args := []string{"run"}
 		// Detach
@@ -475,6 +480,11 @@ func (c *container) Run(ignoreMissing string) {
 		}
 		args = append(args, c.createArgs(ignoreMissing)...)
 		executeCommand("docker", args)
+		c.Dependencies().forEachOfKind("link", func(name string) {
+			if dep, ok := containerMap[name]; ok {
+				executeHook(dep.Hooks().PostLink())
+			}
+		})
 		executeHook(c.Hooks().PostStart())
 	}
 }

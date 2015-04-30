@@ -13,6 +13,7 @@ import (
 )
 
 type Config interface {
+	ContainerMap() ContainerMap
 	TargetedContainers() Containers
 	DependencyGraph() DependencyGraph
 }
@@ -132,7 +133,12 @@ func NewConfig(options Options, forceOrder bool) Config {
 	return config
 }
 
-// Containers returns the containers of the config in order
+// Containers returns all the containers defined in the config
+func (c *config) ContainerMap() ContainerMap {
+	return c.containerMap
+}
+
+// Containers returns the targeted containers in order
 func (c *config) TargetedContainers() Containers {
 	var containers Containers
 	for _, name := range c.order {

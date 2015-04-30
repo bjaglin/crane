@@ -78,3 +78,11 @@ func (d *Dependencies) remove(resolved string) {
 		}
 	}
 }
+
+// calls a function for all dependencies of
+// the given kind
+func (d *Dependencies) forEachOfKind(kind string, f func(name string)) {
+	for _, name := range d.forKind(kind) {
+		f(name)
+	}
+}

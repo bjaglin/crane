@@ -215,6 +215,7 @@ containers:
     image: busybox
     run:
       detach: true
+      link: ["service2:service2"]
       cmd: ["sleep", "50"]
   service2:
     image: busybox
@@ -240,6 +241,8 @@ hooks:
     post-stop: echo container from bar stopped
   service3:
     post-stop: echo container service3 stopped
+  service2:
+    pre-link: echo container service2 to be linked
 ```
 
 Hooks can be defined on a group level (`foo`, `bar`) so that they apply to all containers within that group, or directly on a container (`service3`). At most one hook can be registered per container and per event. When more than one hook is found for a given container and a given event, the following rules apply:
@@ -251,6 +254,8 @@ The following hooks are currently available:
 * `post-start`: Executed after starting or running a container
 * `pre-stop`: Executed before stopping a container
 * `post-stop`: Executed after stopping a container
+* `pre-link`: Executed before the container address is injected into another one via a `link`
+* `post-link`: Executed after the container address is injected into another one via a `link`
 
 ### YAML advanced usage
 YAML gives you some advanced features like [alias](http://www.yaml.org/spec/1.2/spec.html#id2786196) and [merge](http://yaml.org/type/merge.html). They allow you to easily avoid duplicated code in your `crane.yml` file. As a example, imagine you need to define 2 different containers: `web` and `admin`. They share almost the same configuration but the `cmd` declaration. And imagine you also need 2 instances for each one for using with a node balancer. Then you can declare them as simply:

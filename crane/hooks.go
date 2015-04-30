@@ -9,6 +9,8 @@ type Hooks interface {
 	PostStart() string
 	PreStop() string
 	PostStop() string
+	PreLink() string
+	PostLink() string
 }
 
 type hooks struct {
@@ -16,6 +18,8 @@ type hooks struct {
 	RawPostStart string `json:"post-start" yaml:"post-start"`
 	RawPreStop   string `json:"pre-stop" yaml:"pre-stop"`
 	RawPostStop  string `json:"post-stop" yaml:"post-stop"`
+	RawPreLink   string `json:"pre-link" yaml:"pre-link"`
+	RawPostLink  string `json:"post-link" yaml:"post-link"`
 	// until we have a very long list, it's probably easier
 	// to do 4 changes in that file for each new event than
 	// using `go generate`
@@ -37,6 +41,14 @@ func (h *hooks) PostStop() string {
 	return os.ExpandEnv(h.RawPostStop)
 }
 
+func (h *hooks) PreLink() string {
+	return os.ExpandEnv(h.RawPreLink)
+}
+
+func (h *hooks) PostLink() string {
+	return os.ExpandEnv(h.RawPostLink)
+}
+
 // Merge another set of hooks into the existing object. Existing
 // hooks will be overriden if the corresponding hooks from the
 // source struct are defined. Returns true if some content was
@@ -52,5 +64,7 @@ func (h *hooks) CopyFrom(source hooks) (overriden bool) {
 	overrideIfFromNotEmpty(source.RawPostStart, &h.RawPostStart)
 	overrideIfFromNotEmpty(source.RawPreStop, &h.RawPreStop)
 	overrideIfFromNotEmpty(source.RawPostStop, &h.RawPostStop)
+	overrideIfFromNotEmpty(source.RawPreLink, &h.RawPreLink)
+	overrideIfFromNotEmpty(source.RawPostLink, &h.RawPostLink)
 	return
 }
