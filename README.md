@@ -44,6 +44,12 @@ when upgrading.
 
 Of course, you will need to have Docker (>= 1.6) installed.
 
+For shell completion, add one of the following to your `bash_profile` (or
+equivalent):
+
+* `eval "$(crane --completion-script-bash)"`
+* `eval "$(crane --completion-script-zsh)"`
+
 
 ## Usage
 Crane is a very light wrapper around the Docker CLI. This means that most
